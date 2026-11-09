@@ -1,4 +1,4 @@
-<div align="center"># <h1>🎬 Beautiful YT Type Local Player</h1>
+<div align="center"><h1>🎬 Beautiful YT Type Local Player</h1>
 
 **Кастомный YouTube-подобный плеер для локальных видео и аудио в Chrome**
 
