@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <style>
+    /* ===== Общие стили попапа ===== */
+    body {
+      width: 280px;
+      padding: 16px;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: #1a1a1a;
+      color: white;
+      margin: 0;
+    }
+
+    h3 {
+      margin: 0 0 8px 0;
+      font-size: 15px;
+    }
+
+    p {
+      font-size: 13px;
+      color: #aaa;
+      margin: 0 0 16px 0;
+      line-height: 1.4;
+    }
+
+    /* ===== Кнопка очистки сохранённых позиций ===== */
+    button#clear {
+      width: 100%;
+      padding: 10px;
+      background: #ff0000;
+      color: white;
+      border: none;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      margin-bottom: 12px;
+    }
+
+    button#clear:hover {
+      background: #cc0000;
+    }
+
+    /* Сообщение "Все позиции удалены" (появляется после клика) */
+    .status {
+      margin-top: -4px;
+      margin-bottom: 10px;
+      font-size: 12px;
+      color: #4caf50;
+      display: none;
+    }
+
+    /* ===== Спойлер "Горячие клавиши" ===== */
+    details {
+      border-top: 1px solid #333;
+      padding-top: 12px;
+    }
+
+    summary {
+      cursor: pointer;
+      font-size: 13px;
+      color: #ccc;
+      font-weight: 600;
+      list-style: none;                 /* убираем стандартный маркер */
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      user-select: none;
+    }
+
+    summary::-webkit-details-marker {
+      display: none;                   /* убираем стрелку в Chrome */
+    }
+
+    /* Своя стрелка ▶ */
+    summary::before {
+      content: '▶';
+      font-size: 10px;
+      transition: transform 0.15s;
+    }
+
+    /* При открытии спойлера стрелка поворачивается */
+    details[open] summary::before {
+      transform: rotate(90deg);
+    }
+
+    details[open] summary {
+      margin-bottom: 10px;
+    }
+
+    /* ===== Строка горячей клавиши ===== */
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+      font-size: 12.5px;
+    }
+
+    /* Плашка с названием клавиш */
+    .keys {
+      color: #fff;
+      background: #333;
+      padding: 2px 7px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 12px;
+      min-width: 78px;
+      text-align: center;
+    }
+
+    /* Описание действия */
+    .desc {
+      color: #bbb;
+      flex: 1;
+      margin-left: 12px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Заголовок и описание -->
+  <h3>Beautiful Local Player</h3>
+  <p>Расширение запоминает, на каком месте ты остановил просмотр локальных видео.</p>
+
+  <!-- Кнопка очистки всех сохранённых позиций -->
+  <button id="clear">Очистить все сохранённые позиции</button>
+  <div class="status" id="status">Все позиции удалены</div>
+
+  <!-- Спойлер со списком горячих клавиш -->
+  <details>
+    <summary>Горячие клавиши</summary>
+
+    <div class="row">
+      <span class="keys">Space / K</span>
+      <span class="desc">Play / Pause</span>
+    </div>
+    <div class="row">
+      <span class="keys">J / L</span>
+      <span class="desc">Замедлить / Ускорить</span>
+    </div>
+    <div class="row">
+      <span class="keys">← / →</span>
+      <span class="desc">Перемотка ±5 сек</span>
+    </div>
+    <div class="row">
+      <span class="keys">Shift + ←/→</span>
+      <span class="desc">Перемотка ±10 сек</span>
+    </div>
+    <div class="row">
+      <span class="keys">↑ / ↓</span>
+      <span class="desc">Громкость ±5%</span>
+    </div>
+    <div class="row">
+      <span class="keys">M</span>
+      <span class="desc">Выкл / вкл звук</span>
+    </div>
+    <div class="row">
+      <span class="keys">F</span>
+      <span class="desc">Полный экран</span>
+    </div>
+    <div class="row">
+      <span class="keys">P</span>
+      <span class="desc">Картинка в картинке</span>
+    </div>
+    <div class="row">
+      <span class="keys">H</span>
+      <span class="desc">Отразить по горизонтали</span>
+    </div>
+    <div class="row">
+      <span class="keys">, / .</span>
+      <span class="desc">Кадр назад / вперёд</span>
+    </div>
+    <div class="row">
+      <span class="keys">0–9</span>
+      <span class="desc">Перейти на 0%–90%</span>
+    </div>
+    <div class="row">
+      <span class="keys">Двойной клик</span>
+      <span class="desc">Полный экран</span>
+    </div>
+    <div class="row">
+      <span class="keys">Удержание ЛКМ</span>
+      <span class="desc">Временно ×2</span>
+    </div>
+  </details>
+
+  <!-- Логика кнопки очистки -->
+  <script src="popup.js"></script>
+</body>
+</html>

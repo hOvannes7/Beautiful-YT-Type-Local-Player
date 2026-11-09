@@ -1,0 +1,506 @@
+/* ============================================
+   БАЗОВЫЕ СТИЛИ СТРАНИЦЫ
+   Делаем страницу на весь экран, тёмный фон
+   ============================================ */
+html, body {
+  margin: 0 !important;
+  padding: 0 !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #0f0f0f !important;
+  overflow: hidden !important;
+}
+
+/* ============================================
+   ОСНОВНОЙ КОНТЕЙНЕР ПЛЕЕРА
+   Оборачивает видео/аудио и все элементы управления
+   ============================================ */
+.blp-wrapper {
+  position: relative !important;
+  width: 100% !important;
+  height: 100% !important;
+  background: #0f0f0f !important;
+  font-family: "Roboto", Arial, sans-serif !important;
+  user-select: none !important;          /* нельзя выделять текст */
+  overflow: hidden !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+/* Видео и аудио внутри обёртки */
+.blp-wrapper video,
+.blp-wrapper audio {
+  display: block !important;
+  max-width: 100% !important;
+  max-height: 100% !important;
+  width: auto !important;
+  height: auto !important;
+  outline: none !important;
+  background: #000 !important;
+}
+
+/* Видео растягиваем на весь экран с сохранением пропорций */
+.blp-wrapper.blp-is-video video {
+  width: 100% !important;
+  height: 100% !important;
+  object-fit: contain !important;
+}
+
+/* Полностью скрываем стандартные контролы браузера */
+.blp-wrapper video::-webkit-media-controls,
+.blp-wrapper audio::-webkit-media-controls,
+.blp-wrapper video::-webkit-media-controls-enclosure {
+  display: none !important;
+}
+
+/* ============================================
+   НИЖНЯЯ ПАНЕЛЬ УПРАВЛЕНИЯ
+   Появляется при наведении / паузе / классе blp-show-controls
+   ============================================ */
+.blp-controls {
+  position: absolute !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.85)) !important;
+  padding: 48px 16px 14px !important;
+  opacity: 0;                            /* по умолчанию скрыта */
+  transition: opacity 0.25s ease !important;
+  z-index: 100 !important;
+  pointer-events: none !important;       /* пока скрыта — клики проходят сквозь */
+}
+
+/* Когда нужно показать панель */
+.blp-wrapper.blp-show-controls .blp-controls,
+.blp-wrapper.blp-paused .blp-controls {
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+/* ============================================
+   ПРОГРЕСС-БАР (полоска перемотки)
+   ============================================ */
+.blp-progress-container {
+  position: relative !important;
+  height: 5px !important;
+  background: rgba(255, 255, 255, 0.25) !important;  /* серая подложка */
+  border-radius: 3px !important;
+  cursor: pointer !important;
+  margin-bottom: 14px !important;
+  transition: height 0.15s !important;
+}
+
+/* При наведении полоска становится толще */
+.blp-progress-container:hover {
+  height: 8px !important;
+}
+
+/* Буфер (сколько уже загружено) */
+.blp-buffer {
+  position: absolute !important;
+  left: 0; top: 0;
+  height: 100%;
+  background: rgba(255, 255, 255, 0.4) !important;
+  border-radius: 3px;
+  width: 0%;
+}
+
+/* Текущий прогресс (красная полоска) */
+.blp-progress {
+  position: absolute !important;
+  left: 0; top: 0;
+  height: 100%;
+  background: #ff0000 !important;
+  border-radius: 3px;
+  width: 0%;
+}
+
+/* Круглый бегунок на прогресс-баре */
+.blp-progress-handle {
+  position: absolute !important;
+  top: 50%;
+  width: 14px;
+  height: 14px;
+  background: #ff0000 !important;
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+  opacity: 0;                            /* виден только при наведении */
+  transition: opacity 0.15s;
+  box-shadow: 0 0 6px rgba(0,0,0,0.6);
+}
+
+.blp-progress-container:hover .blp-progress-handle {
+  opacity: 1 !important;
+}
+
+/* Тултип со временем при наведении на прогресс-бар */
+.blp-tooltip {
+  position: absolute !important;
+  bottom: 100% !important;
+  transform: translateX(-50%) !important;
+  margin-bottom: 12px !important;
+  background: rgba(28, 28, 28, 0.95) !important;
+  color: white !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  padding: 4px 8px !important;
+  border-radius: 4px !important;
+  white-space: nowrap !important;
+  pointer-events: none !important;
+  opacity: 0;
+  transition: opacity 0.12s !important;
+  z-index: 200 !important;
+}
+
+.blp-tooltip.blp-visible {
+  opacity: 1 !important;
+}
+
+/* ============================================
+   НИЖНИЙ РЯД КНОПОК (play, громкость, время, скорость...)
+   ============================================ */
+.blp-bottom {
+  display: flex !important;
+  align-items: center !important;
+  gap: 6px !important;
+  color: white !important;
+}
+
+.blp-left, .blp-right {
+  display: flex !important;
+  align-items: center !important;
+  gap: 4px !important;
+}
+
+.blp-right {
+  margin-left: auto !important;          /* прижимаем правую часть вправо */
+}
+
+/* Общий стиль круглых кнопок */
+.blp-btn {
+  background: transparent !important;
+  border: none !important;
+  color: white !important;
+  width: 42px !important;
+  height: 42px !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: background 0.15s !important;
+  padding: 0 !important;
+}
+
+.blp-btn:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+.blp-btn svg {
+  width: 26px !important;
+  height: 26px !important;
+  fill: currentColor !important;
+}
+
+/* Отображение текущего времени / длительности */
+.blp-time {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  min-width: 100px !important;
+  text-align: center !important;
+  opacity: 0.95 !important;
+  white-space: nowrap !important;
+}
+
+/* ============================================
+   ГРОМКОСТЬ
+   Ползунок появляется при наведении на иконку
+   ============================================ */
+.blp-volume-container {
+  display: flex !important;
+  align-items: center !important;
+  gap: 2px !important;
+  height: 42px !important;
+}
+
+.blp-volume-slider {
+  width: 0;                              /* по умолчанию скрыт */
+  overflow: hidden;
+  transition: width 0.2s ease !important;
+  display: flex !important;
+  align-items: center !important;
+  height: 42px !important;
+}
+
+/* При наведении на контейнер — показываем ползунок */
+.blp-volume-container:hover .blp-volume-slider {
+  width: 80px !important;
+}
+
+.blp-volume-range {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 80px !important;
+  height: 4px !important;
+  background: rgba(255, 255, 255, 0.35) !important;
+  border-radius: 2px !important;
+  outline: none !important;
+  cursor: pointer !important;
+  margin: 0 !important;
+  vertical-align: middle !important;
+}
+
+/* Круглый бегунок громкости (Chrome) */
+.blp-volume-range::-webkit-slider-thumb {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+  width: 13px !important;
+  height: 13px !important;
+  background: white !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  border: none !important;
+  margin-top: 0px !important;
+  box-shadow: 0 0 2px rgba(0,0,0,0.4);
+}
+
+/* Круглый бегунок громкости (Firefox) */
+.blp-volume-range::-moz-range-thumb {
+  width: 13px !important;
+  height: 13px !important;
+  background: white !important;
+  border-radius: 50% !important;
+  cursor: pointer !important;
+  border: none !important;
+}
+
+/* ============================================
+   МЕНЮ СКОРОСТИ ВОСПРОИЗВЕДЕНИЯ
+   ============================================ */
+.blp-speed-wrapper {
+  position: relative !important;
+}
+
+.blp-speed {
+  font-size: 13px !important;
+  font-weight: 500 !important;
+  padding: 5px 10px !important;
+  border-radius: 4px !important;
+  cursor: pointer !important;
+  min-width: 48px !important;
+  text-align: center !important;
+  user-select: none !important;
+}
+
+.blp-speed:hover {
+  background: rgba(255, 255, 255, 0.18) !important;
+}
+
+/* Выпадающий список скоростей (открывается вверх) */
+.blp-speed-menu {
+  position: absolute !important;
+  bottom: 100% !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  margin-bottom: 10px !important;
+  background: rgba(28, 28, 28, 0.95) !important;
+  border-radius: 8px !important;
+  padding: 6px 0 !important;
+  min-width: 90px !important;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5) !important;
+  backdrop-filter: blur(10px) !important;
+  display: none !important;
+  z-index: 200 !important;
+  overflow: hidden !important;
+}
+
+.blp-speed-menu.blp-open {
+  display: block !important;
+}
+
+.blp-speed-option {
+  padding: 8px 16px !important;
+  font-size: 13px !important;
+  color: white !important;
+  cursor: pointer !important;
+  text-align: center !important;
+  transition: background 0.15s !important;
+  white-space: nowrap !important;
+}
+
+.blp-speed-option:hover {
+  background: rgba(255, 255, 255, 0.15) !important;
+}
+
+/* Активная скорость (красная) */
+.blp-speed-option.blp-active {
+  color: #ff0000 !important;
+  font-weight: 600 !important;
+  background: rgba(255, 0, 0, 0.12) !important;
+}
+
+/* ============================================
+   БОЛЬШАЯ КНОПКА PLAY ПО ЦЕНТРУ
+   Видна только когда видео на паузе
+   ============================================ */
+.blp-big-play {
+  position: absolute !important;
+  top: 50% !important;
+  left: 50% !important;
+  transform: translate(-50%, -50%) !important;
+  width: 80px !important;
+  height: 80px !important;
+  background: rgba(0, 0, 0, 0.65) !important;
+  border-radius: 50% !important;
+  display: none !important;
+  align-items: center !important;
+  justify-content: center !important;
+  cursor: pointer !important;
+  z-index: 50 !important;
+  transition: background 0.2s, transform 0.15s !important;
+}
+
+.blp-wrapper.blp-paused .blp-big-play {
+  display: flex !important;
+}
+
+.blp-big-play:hover {
+  background: rgba(0, 0, 0, 0.85) !important;
+  transform: translate(-50%, -50%) scale(1.08) !important;
+}
+
+.blp-big-play svg {
+  width: 40px !important;
+  height: 40px !important;
+  fill: white !important;
+  margin-left: 0px !important;
+  transform: translateX(0px);
+}
+
+/* ============================================
+   СТИЛИ ДЛЯ АУДИО-ФАЙЛОВ
+   ============================================ */
+.blp-audio-wrapper {
+  max-width: 720px !important;
+  width: 90% !important;
+  height: auto !important;
+  margin: 0 auto !important;
+  background: #181818 !important;
+  border-radius: 16px !important;
+  padding: 28px 24px !important;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.5) !important;
+  flex-direction: column !important;
+}
+
+.blp-audio-title {
+  color: white !important;
+  font-size: 17px !important;
+  margin-bottom: 20px !important;
+  text-align: center !important;
+  word-break: break-all !important;
+  opacity: 0.95 !important;
+}
+
+/* ============================================
+   ИНДИКАТОРЫ СВЕРХУ (×2 и громкость %)
+   Появляются временно при действиях
+   ============================================ */
+.blp-speed-indicator,
+.blp-volume-indicator {
+  position: absolute !important;
+  top: 65px !important;
+  left: 50% !important;
+  transform: translateX(-50%) !important;
+  background: rgba(0, 0, 0, 0.75) !important;
+  color: white !important;
+  font-size: 18px !important;
+  font-weight: 350 !important;
+  border-radius: 8px !important;
+  z-index: 60 !important;
+  opacity: 0;
+  pointer-events: none !important;
+  transition: opacity 0.15s ease !important;
+  backdrop-filter: blur(6px) !important;
+  letter-spacing: 0.5px !important;
+  white-space: nowrap !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  height: 38px !important;
+  padding: 0 18px !important;
+  box-sizing: border-box !important;
+  line-height: 1 !important;
+  padding-top: 3px !important;           /* оптическая коррекция текста */
+}
+
+.blp-speed-indicator.blp-visible,
+.blp-volume-indicator.blp-visible {
+  opacity: 1 !important;
+}
+
+/* ============================================
+   ОТРАЖЕНИЕ ВИДЕО ПО ГОРИЗОНТАЛИ (клавиша H)
+   ============================================ */
+.blp-wrapper.blp-flipped video {
+  transform: scaleX(-1) !important;
+}
+
+/* ============================================
+   КОНТЕКСТНОЕ МЕНЮ (ПКМ)
+   ============================================ */
+.blp-context-menu {
+  position: fixed !important;
+  background: rgba(28, 28, 28, 0.72) !important;
+  border-radius: 12px !important;
+  padding: 6px 0 !important;
+  min-width: 210px !important;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45) !important;
+  backdrop-filter: blur(18px) saturate(1.4) !important;
+  -webkit-backdrop-filter: blur(18px) saturate(1.4) !important;
+  z-index: 9999 !important;
+  display: none !important;
+  font-family: "Roboto", Arial, sans-serif !important;
+  overflow: hidden !important;
+  border: 1px solid rgba(255,255,255,0.08) !important;
+}
+
+.blp-context-menu.blp-open {
+  display: block !important;
+}
+
+.blp-context-item {
+  display: flex !important;
+  align-items: center !important;
+  gap: 12px !important;
+  padding: 10px 16px !important;
+  color: white !important;
+  font-size: 13.5px !important;
+  cursor: pointer !important;
+  transition: background 0.12s !important;
+  user-select: none !important;
+}
+
+.blp-context-item:hover {
+  background: rgba(255, 255, 255, 0.12) !important;
+}
+
+.blp-context-item svg {
+  width: 18px !important;
+  height: 18px !important;
+  fill: currentColor !important;
+  flex-shrink: 0 !important;
+  opacity: 0.9 !important;
+}
+
+/* Активный пункт (например Loop включён) */
+.blp-context-item.blp-active {
+  color: #ff4444 !important;
+}
+
+/* Разделитель между пунктами меню */
+.blp-context-separator {
+  height: 1px !important;
+  background: rgba(255,255,255,0.12) !important;
+  margin: 5px 0 !important;
+}
