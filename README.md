@@ -93,4 +93,3 @@ BeautifulYTTypeLocalPlayer/
 ## 📄 Лицензия
 
 **MIT** — делай что хочешь. ❤️
-'@; Set-Content -Path README.md -Value $content -Encoding UTF8"
