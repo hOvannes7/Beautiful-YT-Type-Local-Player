@@ -1,4 +1,4 @@
-# 🎬 Beautiful YT Type Local Player
+<div align="center"># 🎬 Beautiful YT Type Local Player
 
 **Кастомный YouTube-подобный плеер для локальных видео и аудио в Chrome**
 
