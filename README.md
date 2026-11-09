@@ -1,15 +1,19 @@
-<div align="center"><h1 style="margin-top: 0;">🎬 Beautiful YT Type Local Player</h1>
+<h1 align="center">🎬 Beautiful YT Type Local Player</h1>
 
-**Кастомный YouTube-подобный плеер для локальных видео и аудио в Chrome**
+<p align="center">
+  <strong>Кастомный YouTube-подобный плеер для локальных видео и аудио в Chrome</strong>
+</p>
 
-[![Chrome](https://img.shields.io/badge/Chrome-Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white)](https://www.google.com/chrome/)
-[![Manifest](https://img.shields.io/badge/Manifest-V3-34A853?style=for-the-badge&logo=json&logoColor=white)](manifest.json)
-[![License](https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge)](LICENSE)
-[![GitHub](https://img.shields.io/badge/GitHub-hOvannes7-181717?style=for-the-badge&logo=github&logoColor=white)](https://github.com/hOvannes7/Beautiful-YT-Type-Local-Player)
+<p align="center">
+  <a href="https://www.google.com/chrome/"><img src="https://img.shields.io/badge/Chrome-Extension-4285F4?style=for-the-badge&logo=googlechrome&logoColor=white" alt="Chrome"></a>
+  <a href="manifest.json"><img src="https://img.shields.io/badge/Manifest-V3-34A853?style=for-the-badge&logo=json&logoColor=white" alt="Manifest"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-yellow?style=for-the-badge" alt="License"></a>
+  <a href="https://github.com/hOvannes7/Beautiful-YT-Type-Local-Player"><img src="https://img.shields.io/badge/GitHub-hOvannes7-181717?style=for-the-badge&logo=github&logoColor=white" alt="GitHub"></a>
+</p>
 
-*Современный тёмный интерфейс вместо стандартного плеера Chrome для файлов file://*
-
-</div>
+<p align="center">
+  <em>Современный тёмный интерфейс вместо стандартного плеера Chrome для файлов <code>file://</code></em>
+</p>
 
 ---
 
@@ -23,7 +27,7 @@
 
 ## ✨ Возможности
 
-- 🌙 Современный тёмный дизайн в духе YouTube
+- 🌙 Современный дизайн в духе YouTube
 - 💾 Запоминание позиции просмотра
 - ⌨️ Горячие клавиши (J/K/L, стрелки, F, P, H, кадры , / . и др.)
 - 🖱️ Удержание ЛКМ — временный ×2
