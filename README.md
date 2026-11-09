@@ -48,6 +48,7 @@
 
 ## 📁 Структура
 
+```
 BeautifulYTTypeLocalPlayer/
 ├── manifest.json
 ├── README.md
@@ -60,7 +61,7 @@ BeautifulYTTypeLocalPlayer/
     ├── icon48.png
     └── icon128.png
 
----
+```
 
 ## ⌨️ Горячие клавиши
 
