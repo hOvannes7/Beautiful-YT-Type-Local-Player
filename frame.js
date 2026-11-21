@@ -51,7 +51,9 @@ function renderFrame(src, time) {
         draw();                       // первый кадр — перематывать не нужно
       } else {
         seeking = true;
-        video.currentTime = Math.min(time, video.duration || time);
+        // Время приходит как метка начала кадра. Сдвигаем на 1 мс внутрь кадра,
+        // иначе из-за округления Chrome может показать предыдущий кадр
+        video.currentTime = Math.min(time + 0.001, video.duration || time);
       }
     });
 

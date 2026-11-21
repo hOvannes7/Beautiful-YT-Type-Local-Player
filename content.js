@@ -207,8 +207,17 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
     let spaceDown = false;
     let spaceTimer = null;     // не null — ещё ждём: это тап или удержание
 
-    // Время видео в момент открытия контекстного меню (для «Копировать кадр»)
-    let frameTime = null;
+    // Точная метка времени кадра, который сейчас показан на экране.
+    // currentTime для этого не годится: при паузе он может лежать ровно на границе
+    // кадров, и из-за округления «Копировать кадр» брал бы предыдущий кадр.
+    let shownFrameTime = null;
+    if (isVideo && typeof media.requestVideoFrameCallback === 'function') {
+      const trackFrame = (now, meta) => {
+        shownFrameTime = meta.mediaTime;
+        media.requestVideoFrameCallback(trackFrame);
+      };
+      media.requestVideoFrameCallback(trackFrame);
+    }
     let toastTimeout = null;
 
     /* ============================================
@@ -598,9 +607,6 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
       loopItem.classList.toggle('blp-active', media.loop);
       loopItem.querySelector('span').textContent = media.loop ? 'Зациклить (вкл)' : 'Зациклить';
 
-      // Запоминаем время кадра именно в момент вызова меню (видео может продолжать играть)
-      frameTime = media.currentTime;
-
       // «Копировать кадр» нужен только если есть видеодорожка
       // (Chrome открывает одиночный mp3 тоже в <video>, но без картинки)
       const frameItem = contextMenu.querySelector('[data-action="copy-frame"]');
@@ -641,7 +647,8 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
           wrapper.classList.toggle('blp-flipped');
           break;
 case 'copy-frame':
-          copyFrame(frameTime);
+          // Кадр берём в момент нажатия на пункт меню (как родное «Копировать кадр» в Chrome)
+          copyFrame(shownFrameTime !== null ? shownFrameTime : media.currentTime);
           break;
 case 'copy-name':
           try {
