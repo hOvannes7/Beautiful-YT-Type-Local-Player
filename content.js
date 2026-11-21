@@ -585,8 +585,13 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
       }
     }
 
-    media.addEventListener('contextmenu', e => {
+    // Слушаем весь плеер, а не только <video>: панель управления лежит поверх видео,
+    // и без этого на ней вылезало бы системное меню Chrome
+    wrapper.addEventListener('contextmenu', e => {
       e.preventDefault();
+
+      // ПКМ по самому нашему меню — просто не даём открыться системному
+      if (contextMenu.contains(e.target)) return;
 
       // Обновляем состояние пункта "Зациклить"
       const loopItem = contextMenu.querySelector('[data-action="loop"]');
@@ -614,7 +619,7 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
 
     document.addEventListener('click', hideContextMenu);
     document.addEventListener('contextmenu', e => {
-      if (!contextMenu.contains(e.target) && e.target !== media) {
+      if (!wrapper.contains(e.target)) {
         hideContextMenu();
       }
     });
