@@ -15,8 +15,12 @@
     exitFullscreen: `<svg viewBox="0 0 24 24"><path d="M5 16h3v3h2v-5H5v2zm3-8H5v2h5V5H8v3zm6 11h2v-3h3v-2h-5v5zm2-11V5h-2v5h5V8h-3z"/></svg>`,
     pip: `<svg viewBox="0 0 24 24"><path d="M19 7h-8v6h8V7zm2-4H3c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h18c1.1 0 2-.9 2-2V5c0-1.1-.9-2-2-2zm0 16H3V5h18v14z"/></svg>`,
     loop: `<svg viewBox="0 0 24 24"><path d="M7 7h10v3l4-4-4-4v3H5v6h2V7zm10 10H7v-3l-4 4 4 4v-3h12v-6h-2v4z"/></svg>`,
-    flip: `<svg viewBox="0 0 24 24"><path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z"/></svg>`
+    flip: `<svg viewBox="0 0 24 24"><path d="M15 21h2v-2h-2v2zm4-12h2V7h-2v2zM3 5v14c0 1.1.9 2 2 2h4v-2H5V5h4V3H5c-1.1 0-2 .9-2 2zm16-2v2h2c0-1.1-.9-2-2-2zm-8 20h2V1h-2v22zm8-6h2v-2h-2v2zM15 5h2V3h-2v2zm4 8h2v-2h-2v2zm0 8c1.1 0 2-.9 2-2h-2v2z"/></svg>`,
+    camera: `<svg viewBox="0 0 24 24"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0-6.4 0M9 2L7.17 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2h-3.17L15 2H9zm3 15c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5z"/></svg>`
   };
+
+  /* Через сколько мс удержания (ЛКМ или Space) включается временный ×2 */
+  const HOLD_DELAY = 450;
 
   /* Доступные скорости воспроизведения */
   const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -88,6 +92,11 @@
     volumeIndicator.textContent = '100%';
     if (isVideo) wrapper.appendChild(volumeIndicator);
 
+    /* Короткое уведомление ("Кадр скопирован" и т.п.) */
+    const toast = document.createElement('div');
+    toast.className = 'blp-toast';
+    if (isVideo) wrapper.appendChild(toast);
+
     /* ============================================
        КОНТЕКСТНОЕ МЕНЮ (ПКМ)
        Важно: добавляем ВНУТРЬ wrapper,
@@ -109,7 +118,11 @@
         <span>Отразить по горизонтали</span>
       </div>
       <div class="blp-context-separator"></div>
-<div class="blp-context-item" data-action="copy-name">
+${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
+        ${icons.camera}
+        <span>Копировать кадр</span>
+      </div>` : ''}
+      <div class="blp-context-item" data-action="copy-name">
         <svg viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
         <span>Копировать имя файла</span>
       </div>
@@ -186,6 +199,17 @@
     let isHoldingFor2x = false;
     let previousSpeed = 1;
     let wasHolding = false;
+
+    // Режим ×2 может включить и мышь, и Space — запоминаем, кто именно держит
+    const hold2xSources = new Set();
+
+    // Для Space: короткое нажатие = play/pause, удержание = ×2
+    let spaceDown = false;
+    let spaceTimer = null;     // не null — ещё ждём: это тап или удержание
+
+    // Время видео в момент открытия контекстного меню (для «Копировать кадр»)
+    let frameTime = null;
+    let toastTimeout = null;
 
     /* ============================================
        СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ ПОЗИЦИИ
@@ -268,6 +292,13 @@
       volumeHideTimeout = setTimeout(() => {
         volumeIndicator.classList.remove('blp-visible');
       }, 1000);
+    }
+
+    function showToast(text, duration = 1500) {
+      toast.textContent = text;
+      toast.classList.add('blp-visible');
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => toast.classList.remove('blp-visible'), duration);
     }
 
     /* Установка громкости
@@ -405,24 +436,40 @@
       if (e.button !== 0 || e.target !== media) return;
       if (isDragging) return;
 
-      // Если держат дольше 450 мс — включаем временный ×2
+      wasHolding = false;   // сброс «залипшего» флага, если прошлый mouseup был вне видео
+      clearTimeout(holdTimer);
+
+      // Если держат дольше HOLD_DELAY — включаем временный ×2
       holdTimer = setTimeout(() => {
-        isHoldingFor2x = true;
         wasHolding = true;
-        previousSpeed = media.playbackRate || 1;
-        media.playbackRate = 2;
-        speedIndicator.classList.add('blp-visible');
-      }, 450);
+        start2x('mouse');
+      }, HOLD_DELAY);
     });
+
+    /* Включить / выключить временный ×2.
+       source — кто держит ('mouse' или 'key'); скорость возвращается,
+       только когда отпущены все источники */
+    function start2x(source) {
+      hold2xSources.add(source);
+      if (isHoldingFor2x) return;
+      isHoldingFor2x = true;
+      previousSpeed = media.playbackRate || 1;
+      media.playbackRate = 2;
+      speedIndicator.classList.add('blp-visible');
+    }
+
+    function stop2x(source) {
+      hold2xSources.delete(source);
+      if (!isHoldingFor2x || hold2xSources.size > 0) return;
+      isHoldingFor2x = false;
+      media.playbackRate = previousSpeed;
+      speedIndicator.classList.remove('blp-visible');
+      updateSpeedUI();
+    }
 
     const stopHolding2x = () => {
       clearTimeout(holdTimer);
-      if (isHoldingFor2x) {
-        isHoldingFor2x = false;
-        media.playbackRate = previousSpeed;
-        speedIndicator.classList.remove('blp-visible');
-        updateSpeedUI();
-      }
+      stop2x('mouse');
     };
 
     media.addEventListener('mouseup', stopHolding2x);
@@ -471,6 +518,73 @@
       contextMenu.classList.remove('blp-open');
     }
 
+    /* Достаём кадр видео на заданной секунде как PNG-Blob.
+
+       На file:// нельзя просто нарисовать <video> в canvas на самой странице —
+       Chrome считает такой canvas «испорченным» и toBlob() падает с SecurityError.
+       Поэтому кадр рисует страница расширения (frame.html) во вложенном скрытом
+       iframe: у неё есть доступ к file://, и canvas остаётся чистым.
+       Бонус — кадр получается в родном разрешении видео и без интерфейса плеера. */
+    function getFrameBlob(time) {
+      return new Promise((resolve, reject) => {
+        const frameUrl = chrome.runtime.getURL('frame.html');
+        const frameOrigin = new URL(frameUrl).origin;
+
+        const iframe = document.createElement('iframe');
+        iframe.src = frameUrl;
+        iframe.style.cssText =
+          'position:fixed;left:-10px;top:-10px;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+
+        // Личный канал связи с iframe — чтобы сама страница не видела наш Blob
+        const channel = new MessageChannel();
+
+        const cleanup = () => {
+          clearTimeout(timer);
+          channel.port1.close();
+          iframe.remove();
+        };
+        const timer = setTimeout(() => {
+          cleanup();
+          reject(new Error('Время ожидания истекло'));
+        }, 20000);
+
+        channel.port1.onmessage = e => {
+          cleanup();
+          if (e.data && e.data.blob) resolve(e.data.blob);
+          else reject(new Error((e.data && e.data.error) || 'Неизвестная ошибка'));
+        };
+
+        iframe.addEventListener('load', () => {
+          iframe.contentWindow.postMessage(
+            { src: media.currentSrc, time },
+            frameOrigin,
+            [channel.port2]
+          );
+        });
+
+        document.documentElement.appendChild(iframe);
+      });
+    }
+
+    /* Копирование кадра (на секунде time) в буфер обмена как PNG */
+    async function copyFrame(time) {
+      if (!isVideo || time === null || !media.videoWidth) {
+        showToast('Не удалось получить кадр');
+        return;
+      }
+      try {
+        showToast('Копирую кадр…', 20000);
+        // В буфер передаём Promise, а не готовый Blob: запись начинается сразу
+        // внутри клика, поэтому жест пользователя не «протухает», пока кадр готовится
+        const blobPromise = getFrameBlob(time);
+        await navigator.clipboard.write([new ClipboardItem({ 'image/png': blobPromise })]);
+        showToast('Кадр скопирован');
+      } catch (err) {
+        console.warn('[BLP] Не удалось скопировать кадр:', err);
+        showToast('Не удалось скопировать кадр');
+      }
+    }
+
     media.addEventListener('contextmenu', e => {
       e.preventDefault();
 
@@ -479,9 +593,20 @@
       loopItem.classList.toggle('blp-active', media.loop);
       loopItem.querySelector('span').textContent = media.loop ? 'Зациклить (вкл)' : 'Зациклить';
 
+      // Запоминаем время кадра именно в момент вызова меню (видео может продолжать играть)
+      frameTime = media.currentTime;
+
+      // «Копировать кадр» нужен только если есть видеодорожка
+      // (Chrome открывает одиночный mp3 тоже в <video>, но без картинки)
+      const frameItem = contextMenu.querySelector('[data-action="copy-frame"]');
+      if (frameItem) {
+        if (media.videoWidth > 0) frameItem.style.removeProperty('display');
+        else frameItem.style.setProperty('display', 'none', 'important');
+      }
+
       // Позиционируем меню рядом с курсором
       const x = Math.min(e.clientX, window.innerWidth - 230);
-      const y = Math.min(e.clientY, window.innerHeight - 260);
+      const y = Math.min(e.clientY, window.innerHeight - 310);
       contextMenu.style.left = x + 'px';
       contextMenu.style.top = y + 'px';
       contextMenu.classList.add('blp-open');
@@ -510,10 +635,14 @@
         case 'flip':
           wrapper.classList.toggle('blp-flipped');
           break;
+case 'copy-frame':
+          copyFrame(frameTime);
+          break;
 case 'copy-name':
           try {
             const name = decodeURIComponent(location.pathname.split('/').pop() || '');
             navigator.clipboard.writeText(name);
+            showToast('Имя файла скопировано');
           } catch (err) {}
           break;
         case 'reset-pos':
@@ -594,8 +723,20 @@ case 'copy-name':
       // Игнорируем, если фокус в поле ввода
       if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
 
+      // Space: короткое нажатие = play/pause (по отпусканию), удержание = ×2
+      if (e.code === 'Space') {
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+        e.preventDefault();                    // не даём странице прокручиваться / «нажимать» кнопку
+        if (e.repeat || spaceDown) return;     // автоповтор клавиши игнорируем
+        spaceDown = true;
+        spaceTimer = setTimeout(() => {
+          spaceTimer = null;                   // дождались — это удержание
+          start2x('key');
+        }, HOLD_DELAY);
+        return;
+      }
+
       switch (e.code) {
-        case 'Space':
         case 'KeyK':
           e.preventDefault();
           togglePlay();
@@ -695,6 +836,32 @@ case 'copy-name':
           }
           break;
       }
+    });
+
+    document.addEventListener('keyup', e => {
+      if (e.code !== 'Space' || !spaceDown) return;
+      e.preventDefault();
+      spaceDown = false;
+
+      if (spaceTimer !== null) {
+        // Отпустили раньше HOLD_DELAY — обычный тап: play/pause
+        clearTimeout(spaceTimer);
+        spaceTimer = null;
+        togglePlay();
+        showControls();
+      } else {
+        // Было удержание — возвращаем обычную скорость
+        stop2x('key');
+      }
+    });
+
+    // Если окно потеряло фокус при зажатом Space, keyup не придёт — сбрасываем вручную
+    window.addEventListener('blur', () => {
+      if (!spaceDown) return;
+      spaceDown = false;
+      clearTimeout(spaceTimer);
+      spaceTimer = null;
+      stop2x('key');
     });
 
     /* ============================================

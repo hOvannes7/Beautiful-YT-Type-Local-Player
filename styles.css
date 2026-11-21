@@ -407,7 +407,8 @@ html, body {
    Появляются временно при действиях
    ============================================ */
 .blp-speed-indicator,
-.blp-volume-indicator {
+.blp-volume-indicator,
+.blp-toast {
   position: absolute !important;
   top: 65px !important;
   left: 50% !important;
@@ -435,7 +436,8 @@ html, body {
 }
 
 .blp-speed-indicator.blp-visible,
-.blp-volume-indicator.blp-visible {
+.blp-volume-indicator.blp-visible,
+.blp-toast.blp-visible {
   opacity: 1 !important;
 }
 
