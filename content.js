@@ -74,6 +74,19 @@
       wrapper.insertBefore(title, media);
     }
 
+    /* Название файла сверху (для видео) — появляется и скрывается вместе с панелью управления */
+    if (!isAudio) {
+      const videoTitle = document.createElement('div');
+      videoTitle.className = 'blp-video-title';
+      const rawName = location.pathname.split('/').pop() || '';
+      try {
+        videoTitle.textContent = decodeURIComponent(rawName);
+      } catch (e) {
+        videoTitle.textContent = rawName;   // если имя содержит «битую» кодировку
+      }
+      wrapper.appendChild(videoTitle);
+    }
+
     /* Большая кнопка Play по центру (только для видео) */
     const bigPlay = document.createElement('div');
     bigPlay.className = 'blp-big-play';
