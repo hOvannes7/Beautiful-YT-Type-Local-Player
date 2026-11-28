@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Beautiful YT Type Local Player",
-  "version": "1.4.2",
-  "description": "Красивый YouTube-подобный плеер для локальных видео и аудио с запоминанием позиции",
+  "version": "1.5.0",
+  "description": "Красивый YouTube-подобный плеер для локальных видео и аудио с запоминанием позиции и усилением звука до 300%",
   "permissions": ["storage"],
   "host_permissions": ["file://*/*"],
   "content_scripts": [
@@ -16,7 +16,7 @@
   ],
   "web_accessible_resources": [
     {
-      "resources": ["frame.html"],
+      "resources": ["frame.html", "boost.html"],
       "matches": ["file:///*"]
     }
   ],

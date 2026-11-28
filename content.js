@@ -1,6 +1,19 @@
 (function () {
   'use strict';
 
+  /* Расширение должно работать только там, где Chrome сам открыл файл как медиа
+     (одиночный .mp4 / .mp3 и т.п.). На обычных локальных страницах (.html, .txt…)
+     — например, на сохранённой веб-странице с <video> — мы ничего не трогаем. */
+  function isStandaloneMediaPage() {
+    if (/^(video|audio)\//.test(document.contentType || '')) return true;
+    const kids = document.body ? document.body.children : [];
+    return kids.length === 1 && /^(VIDEO|AUDIO)$/.test(kids[0].tagName);
+  }
+  if (!isStandaloneMediaPage()) return;
+
+  // Этот класс включает тёмный фон и overflow:hidden из styles.css
+  document.documentElement.classList.add('blp-page');
+
   /* ============================================
      ИКОНКИ (SVG)
      Используются в кнопках и контекстном меню
@@ -21,6 +34,9 @@
 
   /* Через сколько мс удержания (ЛКМ или Space) включается временный ×2 */
   const HOLD_DELAY = 450;
+
+  /* Максимальная громкость: 3 = 300%. Всё, что выше 100%, усиливается через Web Audio */
+  const MAX_VOLUME = 3;
 
   /* Доступные скорости воспроизведения */
   const speeds = [0.25, 0.5, 0.75, 1, 1.25, 1.5, 1.75, 2];
@@ -164,7 +180,7 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
           <div class="blp-volume-container">
             <button class="blp-btn blp-mute" title="Mute (M)">${icons.volumeHigh}</button>
             <div class="blp-volume-slider">
-              <input type="range" class="blp-volume-range" min="0" max="1" step="0.01" value="1">
+              <input type="range" class="blp-volume-range" min="0" max="${MAX_VOLUME}" step="0.01" value="1" title="Громкость (100% — отметка на слайдере)">
             </div>
           </div>
           <div class="blp-time">0:00 / 0:00</div>
@@ -232,6 +248,18 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
       media.requestVideoFrameCallback(trackFrame);
     }
     let toastTimeout = null;
+
+    /* Громкость хранится у нас (0…MAX_VOLUME), а не в media.volume:
+       у элемента громкость не может быть больше 1 */
+    let volumeLevel = 1;
+    let lastAudibleLevel = 1;      // что вернуть при снятии mute
+
+    // Усиление выше 100%: звук играет скрытый iframe расширения (см. boost.js)
+    let boostFrame = null;
+    let boostPort = null;
+    let boostTimer = null;
+    let boostReady = false;
+    let boostUnavailable = false;
 
     /* ============================================
        СОХРАНЕНИЕ / ВОССТАНОВЛЕНИЕ ПОЗИЦИИ
@@ -305,10 +333,10 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
       else media.pause();
     }
 
-    /* Показать плашку с уровнем громкости */
-    function showVolumeIndicator(val) {
-      const percent = Math.round(val * 100);
-      volumeIndicator.textContent = percent + '%';
+    /* Показать плашку с уровнем громкости (выше 100% — оранжевая) */
+    function showVolumeIndicator(level) {
+      volumeIndicator.textContent = Math.round(level * 100) + '%';
+      volumeIndicator.classList.toggle('blp-boosted', level > 1);
       volumeIndicator.classList.add('blp-visible');
       clearTimeout(volumeHideTimeout);
       volumeHideTimeout = setTimeout(() => {
@@ -323,21 +351,113 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
       toastTimeout = setTimeout(() => toast.classList.remove('blp-visible'), duration);
     }
 
-    /* Установка громкости
-       showIndicator = false — не показывать плашку (нужно при старте) */
-    function setVolume(val, showIndicator = true) {
-      val = Math.max(0, Math.min(1, val));
-      media.volume = val;
-      media.muted = val === 0;
-      volumeRange.value = val;
+    /* ============================================
+       УСИЛЕНИЕ ЗВУКА ВЫШЕ 100%
+       Web Audio на самой странице file:// Chrome глушит (CORS), поэтому при
+       громкости выше 100% видео заглушается, а звук с усилением играет скрытый
+       iframe расширения (boost.html). Он синхронизируется с видео.
+       Ниже 100% iframe убирается и звук идёт напрямую, как обычно.
+       ============================================ */
+    function sendBoostState() {
+      if (!boostPort || !boostReady) return;
+      boostPort.postMessage({
+        time: media.currentTime,
+        paused: media.paused || media.seeking || media.readyState < 3,
+        rate: media.playbackRate,
+        gain: volumeLevel
+      });
+    }
 
-      if (media.muted || val === 0) {
+    function stopBoost() {
+      clearInterval(boostTimer);
+      boostTimer = null;
+      if (boostPort) boostPort.close();
+      if (boostFrame) boostFrame.remove();
+      boostPort = boostFrame = null;
+      boostReady = false;
+    }
+
+    function failBoost(msg) {
+      console.warn('[BLP] Усиление звука недоступно:', msg);
+      boostUnavailable = true;
+      stopBoost();
+      volumeLevel = Math.min(volumeLevel, 1);
+      applyVolume();
+      updateVolumeUI();
+      showToast('Усиление звука недоступно для этого файла', 3000);
+    }
+
+    function startBoost() {
+      if (boostFrame) return true;
+      if (boostUnavailable || typeof chrome === 'undefined' || !chrome.runtime?.getURL) return false;
+
+      const url = chrome.runtime.getURL('boost.html');
+      const origin = new URL(url).origin;
+
+      const iframe = document.createElement('iframe');
+      iframe.src = url;
+      iframe.allow = 'autoplay';     // иначе звук в iframe может быть заблокирован автоплеем
+      iframe.style.cssText =
+        'position:fixed;left:-10px;top:-10px;width:1px;height:1px;border:0;opacity:0;pointer-events:none;';
+
+      const channel = new MessageChannel();
+      boostPort = channel.port1;
+      boostPort.onmessage = e => {
+        const d = e.data || {};
+        if (d.ready) { boostReady = true; sendBoostState(); }
+        else if (d.error) failBoost(d.error);
+      };
+
+      iframe.addEventListener('load', () => {
+        iframe.contentWindow.postMessage({ src: media.currentSrc }, origin, [channel.port2]);
+      });
+
+      boostFrame = iframe;
+      document.documentElement.appendChild(iframe);
+      boostTimer = setInterval(sendBoostState, 250);
+      return true;
+    }
+
+    /* Применить текущий volumeLevel к элементу / усилителю */
+    function applyVolume() {
+      const boosting = volumeLevel > 1 && !!boostFrame;
+      if (volumeLevel <= 1) stopBoost();
+      media.muted = volumeLevel === 0 || boosting;   // при усилении звук идёт из iframe
+      media.volume = Math.min(1, volumeLevel);
+      if (boosting) sendBoostState();
+    }
+
+    /* Обновить слайдер и иконку по текущему уровню */
+    function updateVolumeUI() {
+      const shown = volumeLevel;
+      volumeRange.value = shown;
+      volumeRange.classList.toggle('blp-boosted', shown > 1);
+
+      if (shown === 0) {
         muteBtn.innerHTML = icons.mute;
-      } else if (val <= 0.5) {
+      } else if (shown <= 0.5) {
         muteBtn.innerHTML = icons.volumeLow;
       } else {
         muteBtn.innerHTML = icons.volumeHigh;
       }
+    }
+
+    /* Установка громкости: 0 … MAX_VOLUME (1 = 100%)
+       showIndicator = false — не показывать плашку (нужно при старте) */
+    function setVolume(val, showIndicator = true) {
+      val = Math.max(0, Math.min(MAX_VOLUME, val));
+      val = Math.round(val * 100) / 100;       // без хвостов вроде 0.15000000000000002
+
+      if (val > 1 && !startBoost()) {
+        val = 1;
+        showToast('Усиление звука недоступно для этого файла');
+      }
+
+      volumeLevel = val;
+      if (val > 0) lastAudibleLevel = val;
+
+      applyVolume();
+      updateVolumeUI();
 
       if (showIndicator) {
         showVolumeIndicator(val);
@@ -431,17 +551,10 @@ ${isVideo ? `<div class="blp-context-item" data-action="copy-frame">
       updateBuffer();
       restorePosition();
     });
-    media.addEventListener('volumechange', () => {
-      const val = media.muted ? 0 : media.volume;
-      volumeRange.value = val;
-      if (media.muted || val === 0) {
-        muteBtn.innerHTML = icons.mute;
-      } else if (val <= 0.5) {
-        muteBtn.innerHTML = icons.volumeLow;
-      } else {
-        muteBtn.innerHTML = icons.volumeHigh;
-      }
-    });
+    media.addEventListener('volumechange', updateVolumeUI);
+    // Любое изменение состояния видео сразу передаём в усилитель, чтобы звук не отставал
+    ['play', 'playing', 'pause', 'waiting', 'seeking', 'seeked', 'ratechange']
+      .forEach(ev => media.addEventListener(ev, sendBoostState));
 
     // Автосохранение позиции каждые 5 секунд + при закрытии вкладки
     saveInterval = setInterval(savePosition, 5000);
@@ -686,10 +799,20 @@ case 'copy-name':
     /* Громкость */
     muteBtn.addEventListener('click', e => {
       e.stopPropagation();
-      if (media.muted || media.volume === 0) setVolume(parseFloat(volumeRange.value) || 1);
-      else setVolume(0);
+      if (volumeLevel === 0) {
+        // Возвращаем прежний уровень; если до mute было почти 0 — 100%
+        setVolume(lastAudibleLevel >= 0.1 ? lastAudibleLevel : 1);
+      } else {
+        setVolume(0);
+      }
     });
-    volumeRange.addEventListener('input', e => setVolume(parseFloat(e.target.value)));
+    volumeRange.addEventListener('input', e => {
+      let v = parseFloat(e.target.value);
+      if (Math.abs(v - 1) < 0.03) v = 1;        // «прилипание» к 100%
+      setVolume(v);
+    });
+    // После выбора громкости убираем фокус со слайдера, иначе он перехватывает горячие клавиши
+    volumeRange.addEventListener('change', () => volumeRange.blur());
 
     /* Перемотка мышкой */
     progressContainer.addEventListener('mousedown', e => {
@@ -745,8 +868,13 @@ case 'copy-name':
        ГОРЯЧИЕ КЛАВИШИ
        ============================================ */
     document.addEventListener('keydown', e => {
-      // Игнорируем, если фокус в поле ввода
-      if (['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName)) return;
+      // Игнорируем, если фокус в поле ввода (наш слайдер громкости — не в счёт)
+      const ae = document.activeElement;
+      if (ae && ae !== volumeRange && ['INPUT', 'TEXTAREA', 'SELECT'].includes(ae.tagName)) return;
+
+      // Ctrl/Cmd/Alt + клавиша — это команды браузера (Ctrl+F, Ctrl+P, Ctrl+0, Alt+← …),
+      // не перехватываем их
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
 
       // Space: короткое нажатие = play/pause (по отпусканию), удержание = ×2
       if (e.code === 'Space') {
@@ -825,12 +953,12 @@ case 'copy-name':
 
         case 'ArrowUp':
           e.preventDefault();
-          setVolume(media.volume + 0.05);
+          setVolume(volumeLevel + 0.05);
           break;
 
         case 'ArrowDown':
           e.preventDefault();
-          setVolume(media.volume - 0.05);
+          setVolume(volumeLevel - 0.05);
           break;
 
         case 'KeyM':
